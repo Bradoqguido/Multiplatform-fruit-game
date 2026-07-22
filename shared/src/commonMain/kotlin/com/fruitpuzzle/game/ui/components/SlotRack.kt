@@ -24,10 +24,12 @@ import com.fruitpuzzle.game.model.FruitType
 import com.fruitpuzzle.game.model.RackSlot
 import kotlinx.coroutines.delay
 
+import com.fruitpuzzle.game.ui.animation.shakeAnimation
+
 /**
  * The 7-slot rack at the top of the game screen.
  * Shows occupied slots with fruit tiles and empty slots as bordered placeholders.
- * Handles destruction animation when 3 identical fruits match.
+ * Handles destruction animation when 3 identical fruits match and 6th-slot warning shake.
  */
 @Composable
 fun SlotRack(
@@ -38,6 +40,8 @@ fun SlotRack(
   onSlotPositioned: (index: Int, x: Float, y: Float) -> Unit,
   modifier: Modifier = Modifier
 ) {
+  val occupiedCount = rack.count { !it.isEmpty }
+
   // Trigger destroy callback after full 3-piece match group is displayed in the rack
   if (isDestroyPhase) {
     LaunchedEffect(destroyingIndices) {
@@ -48,6 +52,10 @@ fun SlotRack(
 
   Row(
     modifier = modifier
+      .shakeAnimation(
+        trigger = if (occupiedCount == 6 && !isDestroyPhase) occupiedCount else null,
+        shakeOffsetDp = 10f
+      )
       .clip(RoundedCornerShape(16.dp))
       .background(Color(0xFF2A2A4A).copy(alpha = 0.7f))
       .padding(horizontal = 8.dp, vertical = 10.dp),
