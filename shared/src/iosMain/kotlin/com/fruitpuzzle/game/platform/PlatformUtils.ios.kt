@@ -1,7 +1,9 @@
 package com.fruitpuzzle.game.platform
 
+import platform.posix.exit
+
 actual fun exitApp() {
-  // No-op on iOS — OS handles app lifecycle via back-stack
+  exit(0)
 }
 
-actual val showExitButton: Boolean = false
+actual val showExitButton: Boolean = true

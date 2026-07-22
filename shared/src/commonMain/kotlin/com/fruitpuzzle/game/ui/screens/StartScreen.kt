@@ -106,7 +106,7 @@ fun StartScreen(
         )
       }
 
-      // Exit button — Desktop only
+      // Exit button
       if (showExitButton) {
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -114,13 +114,18 @@ fun StartScreen(
           onClick = { exitApp() },
           modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp),
-          shape = RoundedCornerShape(24.dp)
+            .height(56.dp)
+            .clip(RoundedCornerShape(28.dp)),
+          shape = RoundedCornerShape(28.dp),
+          colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = Color.White
+          )
         ) {
           Text(
-            text = "Sair",
-            fontSize = 16.sp,
-            color = Color.White.copy(alpha = 0.8f)
+            text = "❌  Sair do Jogo",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White.copy(alpha = 0.9f)
           )
         }
       }
