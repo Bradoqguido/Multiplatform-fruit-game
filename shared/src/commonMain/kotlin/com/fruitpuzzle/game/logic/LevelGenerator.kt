@@ -5,41 +5,20 @@ import com.fruitpuzzle.game.model.FruitType
 import kotlin.random.Random
 
 /**
- * Procedural level generator using the "Reverse Play" (backwards generation) algorithm.
+ * Procedural level generator using the "Reverse Play" algorithm.
  *
- * **How it works:**
- * 1. Start from the solved state (empty board).
- * 2. For each group, pick a random fruit type and place 3 tiles in a cluster.
- * 3. Tiles are layered so some overlap, creating the puzzle's depth.
- * 4. Since every group of 3 was explicitly placed, playing forward always has a solution.
- *
- * **Board grid:**
+ * Board grid:
  * - Default: 6 columns × 8 rows (phone)
  * - Tablet: 8 columns × 10 rows
- *
- * **Layer strategy:**
- * - Max layers scale with difficulty: min(5, 2 + level / 4)
- * - Higher layers placed on top of lower ones at offset positions
  */
 object LevelGenerator {
 
-  /** Default board dimensions for phone-sized screens. */
   const val DEFAULT_COLUMNS: Int = 6
   const val DEFAULT_ROWS: Int = 8
 
-  /** Tablet board dimensions. */
   const val TABLET_COLUMNS: Int = 8
   const val TABLET_ROWS: Int = 10
 
-  /**
-   * Generates a solvable board for the given level.
-   *
-   * @param level      Current level number (1-based).
-   * @param columns    Board grid width.
-   * @param rows       Board grid height.
-   * @param seed       Optional random seed for reproducible levels.
-   * @return           List of [BoardTile] with unique IDs, positions, and layers.
-   */
   fun generate(
     level: Int,
     columns: Int = DEFAULT_COLUMNS,
@@ -54,7 +33,6 @@ object LevelGenerator {
     val tiles = mutableListOf<BoardTile>()
     var nextId = 0
 
-    // Track occupied cells per layer to avoid exact overlaps within the same layer
     val occupiedCells = mutableMapOf<Int, MutableSet<Pair<Int, Int>>>()
     for (layer in 0..maxLayers) {
       occupiedCells[layer] = mutableSetOf()
@@ -78,28 +56,15 @@ object LevelGenerator {
     return tiles
   }
 
-  /**
-   * Calculates number of groups (each group = 3 identical tiles).
-   * Tile count = 6 + (level - 1) * 6, all divisible by 3.
-   */
   internal fun calculateGroupCount(level: Int): Int {
     val tileCount = 6 + (level - 1) * 6
     return tileCount / 3
   }
 
-  /**
-   * Calculates maximum layer depth for the given level.
-   * Caps at 5 layers for the hardest levels.
-   */
   internal fun calculateMaxLayers(level: Int): Int {
     return minOf(5, 2 + level / 4)
   }
 
-  /**
-   * Places a group of 3 identical tiles in a cluster pattern.
-   * Tiles within a group are placed in adjacent/overlapping positions
-   * potentially spanning multiple layers.
-   */
   private fun placeGroup(
     fruitType: FruitType,
     startId: Int,
@@ -111,18 +76,21 @@ object LevelGenerator {
   ): List<BoardTile> {
     val result = mutableListOf<BoardTile>()
 
-    // Pick a cluster anchor point (leaving margin for adjacent placement)
-    val anchorX = random.nextInt(maxOf(1, columns - 2))
-    val anchorY = random.nextInt(maxOf(1, rows - 2))
+    val minX = if (columns >= 6) 1 else 0
+    val maxX = if (columns >= 6) columns - 3 else maxOf(0, columns - 2)
 
-    // Offsets for the 3 tiles within a cluster
+    val minY = if (rows >= 8) 1 else 0
+    val maxY = if (rows >= 8) rows - 3 else maxOf(0, rows - 2)
+
+    val anchorX = random.nextInt(minX, maxOf(minX + 1, maxX + 1))
+    val anchorY = random.nextInt(minY, maxOf(minY + 1, maxY + 1))
+
     val offsets = generateClusterOffsets(random)
 
     for (i in 0 until 3) {
       val gridX = (anchorX + offsets[i].first).coerceIn(0, columns - 1)
       val gridY = (anchorY + offsets[i].second).coerceIn(0, rows - 1)
 
-      // Assign layer: try to spread across layers based on difficulty
       val layer = pickLayer(gridX, gridY, maxLayers, occupiedCells, random)
 
       val cell = Pair(gridX, gridY)
@@ -143,37 +111,18 @@ object LevelGenerator {
     return result
   }
 
-  /**
-   * Generates 3 offset pairs for cluster placement.
-   * Creates patterns like L-shapes, lines, or tight squares.
-   */
   private fun generateClusterOffsets(random: Random): List<Pair<Int, Int>> {
     val patterns = listOf(
-      // Horizontal line
-      listOf(Pair(0, 0), Pair(1, 0), Pair(2, 0)),
-      // Vertical line
-      listOf(Pair(0, 0), Pair(0, 1), Pair(0, 2)),
-      // L-shape right
+      listOf(Pair(0, 0), Pair(1, 0), Pair(0, 1)),
       listOf(Pair(0, 0), Pair(1, 0), Pair(1, 1)),
-      // L-shape left
       listOf(Pair(0, 0), Pair(0, 1), Pair(1, 1)),
-      // L-shape down
-      listOf(Pair(0, 0), Pair(1, 0), Pair(0, 1)),
-      // Diagonal step
-      listOf(Pair(0, 0), Pair(1, 0), Pair(1, 1)),
-      // Tight triangle
-      listOf(Pair(0, 0), Pair(1, 0), Pair(0, 1)),
-      // Spread horizontal
-      listOf(Pair(0, 0), Pair(1, 0), Pair(2, 1)),
+      listOf(Pair(0, 0), Pair(1, 0), Pair(2, 0)),
+      listOf(Pair(0, 0), Pair(0, 1), Pair(0, 2)),
+      listOf(Pair(0, 0), Pair(1, 1), Pair(0, 1))
     )
     return patterns[random.nextInt(patterns.size)]
   }
 
-  /**
-   * Picks a layer for a tile at the given grid position.
-   * Prefers placing on a layer where the cell is already occupied by lower layers
-   * (creating actual visual overlap). Falls back to layer 0 if all layers are full.
-   */
   private fun pickLayer(
     gridX: Int,
     gridY: Int,
@@ -183,8 +132,7 @@ object LevelGenerator {
   ): Int {
     val cell = Pair(gridX, gridY)
 
-    // 60% chance to try a higher layer if the cell is occupied at a lower layer
-    if (random.nextFloat() < 0.6f) {
+    if (random.nextFloat() < 0.7f) {
       for (layer in 1..maxLayers) {
         val belowOccupied = (0 until layer).any { l ->
           occupiedCells[l]?.contains(cell) == true
@@ -196,44 +144,41 @@ object LevelGenerator {
       }
     }
 
-    // Find the lowest available layer for this cell
     for (layer in 0..maxLayers) {
       if (occupiedCells[layer]?.contains(cell) != true) {
         return layer
       }
     }
 
-    // All layers occupied at this cell — use layer 0 (will visually stack)
     return 0
   }
 
-  /**
-   * Determines which tiles are clickable (not blocked by tiles on higher layers).
-   * A tile is clickable if no other visible tile shares its grid cell at a higher layer.
-   *
-   * @param board The current board state.
-   * @return Set of tile IDs that are clickable.
-   */
   fun calculateClickableTiles(board: List<BoardTile>): Set<Int> {
     val visibleTiles = board.filter { it.isVisible }
+    val layerOffset = 0.15f
+    val overlapThreshold = 0.85f
 
-    // Group by grid position, find the max layer at each position
-    val maxLayerByCell = mutableMapOf<Pair<Int, Int>, Int>()
-    for (tile in visibleTiles) {
-      val cell = Pair(tile.gridX, tile.gridY)
-      val currentMax = maxLayerByCell[cell]
-      if (currentMax == null || tile.layer > currentMax) {
-        maxLayerByCell[cell] = tile.layer
+    val clickableIds = mutableSetOf<Int>()
+
+    for (tileA in visibleTiles) {
+      val xA = tileA.gridX + tileA.layer * layerOffset
+      val yA = tileA.gridY + tileA.layer * layerOffset
+
+      val isBlocked = visibleTiles.any { tileB ->
+        if (tileB.layer <= tileA.layer) {
+          false
+        } else {
+          val xB = tileB.gridX + tileB.layer * layerOffset
+          val yB = tileB.gridY + tileB.layer * layerOffset
+          kotlin.math.abs(xB - xA) < overlapThreshold && kotlin.math.abs(yB - yA) < overlapThreshold
+        }
+      }
+
+      if (!isBlocked) {
+        clickableIds.add(tileA.id)
       }
     }
 
-    // A tile is clickable if it's at the max layer for its cell
-    return visibleTiles
-      .filter { tile ->
-        val cell = Pair(tile.gridX, tile.gridY)
-        tile.layer == maxLayerByCell[cell]
-      }
-      .map { it.id }
-      .toSet()
+    return clickableIds
   }
 }
