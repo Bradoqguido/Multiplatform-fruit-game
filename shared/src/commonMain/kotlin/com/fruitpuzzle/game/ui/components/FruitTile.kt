@@ -1,5 +1,6 @@
 package com.fruitpuzzle.game.ui.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,16 +15,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fruitpuzzle.game.model.FruitType
 
 /**
- * Individual fruit 3D brick tile rendered on the game board or in the rack.
- * Features realistic 3D depth, gradient top face, bevel highlight border, and drop shadow.
+ * Individual fruit 3D Mahjong brick tile.
+ * Renders extruded 3D right & bottom side walls, top face highlights, inner bevel rims, and soft drop shadows.
  */
 @Composable
 fun FruitTile(
@@ -36,76 +41,118 @@ fun FruitTile(
 ) {
   val baseBgColor = fruitBackgroundColor(fruitType)
   val canClick = isClickable && !isBlocked
-  val depth = (size.value * 0.12f).dp // ~5.7dp 3D side depth for 48dp tile
+
+  // 3D Extrusion Depth (right & bottom side wall thickness)
+  val depthX = (size.value * 0.12f).dp // ~5.8dp for 48dp tile
+  val depthY = (size.value * 0.15f).dp // ~7.2dp for 48dp tile
 
   val mainColor = if (isBlocked) baseBgColor.copy(alpha = 0.65f) else baseBgColor
-  val darkSideColor = if (isBlocked) {
-    darkenColor(baseBgColor, 0.45f).copy(alpha = 0.7f)
-  } else {
-    darkenColor(baseBgColor, 0.45f)
-  }
+  val rightWallColor = darkenColor(mainColor, 0.30f)
+  val bottomWallColor = darkenColor(mainColor, 0.45f)
+  val baseCornerColor = darkenColor(mainColor, 0.60f)
 
-  val brickShape = RoundedCornerShape(10.dp)
-  val topFaceShape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
+  val brickShape = RoundedCornerShape(8.dp)
+  val topFaceShape = RoundedCornerShape(topStart = 8.dp, topEnd = 7.dp, bottomStart = 7.dp, bottomEnd = 4.dp)
 
   Box(
     modifier = modifier
       .size(size)
       .shadow(
-        elevation = if (canClick) 6.dp else 1.dp,
+        elevation = if (canClick) 8.dp else 2.dp,
         shape = brickShape,
-        ambientColor = Color.Black.copy(alpha = 0.4f),
-        spotColor = Color.Black.copy(alpha = 0.5f)
+        ambientColor = Color.Black.copy(alpha = 0.5f),
+        spotColor = Color.Black.copy(alpha = 0.6f)
       )
       .then(if (canClick) Modifier.clickable(onClick = onClick) else Modifier),
     contentAlignment = Alignment.TopStart
   ) {
-    // 1. Bottom / Side 3D Base (Depth Layer)
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .clip(brickShape)
-        .background(darkSideColor)
-    )
+    // 1. Extruded 3D Side Walls (Canvas drawing trapezoidal side walls for real 3D depth)
+    Canvas(modifier = Modifier.fillMaxSize()) {
+      val w = this.size.width
+      val h = this.size.height
+      val dx = depthX.toPx()
+      val dy = depthY.toPx()
+      val cornerR = 6.dp.toPx()
 
-    // 2. Front/Top Tile Face (Raised surface offset upwards by depth)
+      // Base background fill (dark corner back)
+      drawRoundRect(
+        color = baseCornerColor,
+        size = Size(w, h),
+        cornerRadius = CornerRadius(cornerR, cornerR)
+      )
+
+      // Right 3D Side Wall
+      val rightWall = Path().apply {
+        moveTo(w - dx, cornerR)
+        lineTo(w - cornerR / 2f, dy)
+        lineTo(w - cornerR / 2f, h - cornerR)
+        lineTo(w - dx, h - dy)
+        close()
+      }
+      drawPath(rightWall, color = rightWallColor)
+
+      // Bottom 3D Side Wall
+      val bottomWall = Path().apply {
+        moveTo(cornerR, h - dy)
+        lineTo(dx, h - cornerR / 2f)
+        lineTo(w - cornerR, h - cornerR / 2f)
+        lineTo(w - dx, h - dy)
+        close()
+      }
+      drawPath(bottomWall, color = bottomWallColor)
+    }
+
+    // 2. Raised Top Face Plate (Shifted top-left to expose 3D side walls)
     Box(
       modifier = Modifier
         .fillMaxSize()
-        .padding(bottom = depth)
+        .padding(end = depthX, bottom = depthY)
         .clip(topFaceShape)
         .background(
           Brush.verticalGradient(
             colors = listOf(
-              mainColor.lighten(0.20f),
+              mainColor.lighten(0.35f),
               mainColor,
-              mainColor.darken(0.12f)
+              mainColor.darken(0.18f)
             )
           )
         )
         .border(
-          width = 1.dp,
+          width = 1.5.dp,
           brush = Brush.verticalGradient(
             colors = listOf(
-              Color.White.copy(alpha = 0.65f),
-              Color.Black.copy(alpha = 0.25f)
+              Color.White.copy(alpha = 0.90f),
+              Color.White.copy(alpha = 0.35f),
+              Color.Black.copy(alpha = 0.35f)
             )
           ),
           shape = topFaceShape
         ),
       contentAlignment = Alignment.Center
     ) {
-      Text(
-        text = fruitType.emoji,
-        fontSize = (size.value * 0.50f).sp
+      // Inner embossed rim highlight
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(2.dp)
+          .border(
+            width = 1.dp,
+            color = Color.White.copy(alpha = 0.25f),
+            shape = RoundedCornerShape(6.dp)
+          )
       )
 
-      // Dark shading overlay if blocked by higher layers
+      Text(
+        text = fruitType.emoji,
+        fontSize = (size.value * 0.46f).sp
+      )
+
+      // Dark shading overlay if tile is blocked by higher layers
       if (isBlocked) {
         Box(
           modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.35f))
+            .background(Color.Black.copy(alpha = 0.40f))
         )
       }
     }
