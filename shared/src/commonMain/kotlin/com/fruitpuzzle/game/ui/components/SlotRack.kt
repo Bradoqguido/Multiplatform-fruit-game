@@ -41,7 +41,7 @@ fun SlotRack(
   // Trigger destroy callback after animation completes
   if (isDestroyPhase) {
     LaunchedEffect(destroyingIndices) {
-      delay(500) // match animation duration
+      delay(200) // fast 200ms destruction animation
       onDestroyComplete()
     }
   }

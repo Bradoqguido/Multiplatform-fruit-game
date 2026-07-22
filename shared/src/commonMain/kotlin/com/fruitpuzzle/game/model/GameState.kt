@@ -10,7 +10,7 @@ data class GameState(
   val board: List<BoardTile> = emptyList(),
   val rack: List<RackSlot> = List(RACK_SIZE) { RackSlot(index = it) },
   val phase: GamePhase = GamePhase.IDLE,
-  val flyingTile: FlyingTile? = null,
+  val flyingTiles: List<FlyingTile> = emptyList(),
   val destroyingIndices: List<Int> = emptyList(),
   val clickableTileIds: Set<Int> = emptySet()
 ) {
@@ -27,9 +27,9 @@ data class GameState(
   val boardHasTiles: Boolean
     get() = board.any { it.isVisible }
 
-  /** Whether the game is won (board empty + rack empty). */
+  /** Whether the game is won (board empty + rack empty + no flying tiles). */
   val isWon: Boolean
-    get() = !boardHasTiles && rackOccupiedCount == 0
+    get() = !boardHasTiles && rackOccupiedCount == 0 && flyingTiles.isEmpty()
 
   /** Whether the rack is full (all 7 slots occupied). */
   val isRackFull: Boolean
@@ -44,10 +44,6 @@ enum class GamePhase {
   IDLE,
   /** Player can interact with the board. */
   PLAYING,
-  /** A tile is flying from the board to the rack. */
-  ANIMATING_FLY,
-  /** 3 matched tiles are being destroyed in the rack. */
-  ANIMATING_DESTROY,
   /** Player cleared the board and rack. */
   WIN,
   /** Rack is full with no match — player must retry. */
@@ -60,7 +56,8 @@ enum class GamePhase {
  * Describes a tile currently animating from the board to the rack.
  * Used by the Flying Overlay composable.
  *
- * @param tile           The board tile being animated.
+ * @param id             Unique flight identifier.
+ * @param fruitType      The fruit/gem type.
  * @param fromX          Absolute X position (positionInRoot) of the tile on the board.
  * @param fromY          Absolute Y position (positionInRoot) of the tile on the board.
  * @param toX            Absolute X position of the target rack slot.
@@ -68,10 +65,12 @@ enum class GamePhase {
  * @param targetSlotIndex Which rack slot this tile will land in.
  */
 data class FlyingTile(
-  val tile: BoardTile,
+  val id: String,
+  val fruitType: FruitType,
   val fromX: Float,
   val fromY: Float,
   val toX: Float,
   val toY: Float,
   val targetSlotIndex: Int
 )
+

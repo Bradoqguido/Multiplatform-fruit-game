@@ -7,7 +7,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -20,34 +19,55 @@ import androidx.compose.ui.zIndex
 import com.fruitpuzzle.game.model.FlyingTile
 
 /**
- * Full-screen overlay that renders a tile flying from the board to the rack.
- * Uses spring physics for a natural, bouncy trajectory.
- * Rendered at the root level so it's never clipped by parent containers.
+ * Full-screen overlay that renders tiles flying concurrently from the board to the rack.
+ * Uses snappy spring physics for fast, natural flight trajectories (~200ms).
+ * Rendered at the root level so it is never clipped by parent containers.
  *
- * @param flyingTile        Data about the tile being animated (source, destination, fruit type).
- * @param onAnimationComplete Called when the spring animation settles at the destination.
+ * @param flyingTiles        List of active flying tiles.
+ * @param onFlyComplete      Callback when an individual tile finishes flying.
  */
 @Composable
 fun FlyingOverlay(
+  flyingTiles: List<FlyingTile>,
+  onFlyComplete: (flightId: String) -> Unit
+) {
+  if (flyingTiles.isEmpty()) return
+
+  Box(
+    modifier = Modifier
+      .fillMaxSize()
+      .zIndex(100f)
+  ) {
+    for (flyingTile in flyingTiles) {
+      SingleFlyingItem(
+        flyingTile = flyingTile,
+        onAnimationComplete = { onFlyComplete(flyingTile.id) }
+      )
+    }
+  }
+}
+
+@Composable
+private fun SingleFlyingItem(
   flyingTile: FlyingTile,
   onAnimationComplete: () -> Unit
 ) {
   val density = LocalDensity.current
   val tileSize = 42.dp
 
-  val animatable = remember(flyingTile) {
+  val animatable = remember(flyingTile.id) {
     Animatable(
       initialValue = Offset(flyingTile.fromX, flyingTile.fromY),
       typeConverter = Offset.VectorConverter
     )
   }
 
-  LaunchedEffect(flyingTile) {
+  LaunchedEffect(flyingTile.id) {
     animatable.animateTo(
       targetValue = Offset(flyingTile.toX, flyingTile.toY),
       animationSpec = spring(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessLow
+        dampingRatio = Spring.DampingRatioLowBouncy,
+        stiffness = Spring.StiffnessMedium
       )
     )
     onAnimationComplete()
@@ -57,23 +77,17 @@ fun FlyingOverlay(
   val xDp = with(density) { currentOffset.x.toDp() }
   val yDp = with(density) { currentOffset.y.toDp() }
 
-  Box(
+  FruitTile(
+    fruitType = flyingTile.fruitType,
+    size = tileSize,
+    isClickable = false,
     modifier = Modifier
-      .fillMaxSize()
-      .zIndex(100f)
-  ) {
-    FruitTile(
-      fruitType = flyingTile.tile.fruitType,
-      size = tileSize,
-      isClickable = false,
-      modifier = Modifier
-        .offset(x = xDp, y = yDp)
-        .graphicsLayer {
-          // Slight scale-up during flight for visual emphasis
-          scaleX = 1.2f
-          scaleY = 1.2f
-          shadowElevation = 12f
-        }
-    )
-  }
+      .offset(x = xDp, y = yDp)
+      .graphicsLayer {
+        scaleX = 1.15f
+        scaleY = 1.15f
+        shadowElevation = 8f
+      }
+  )
 }
+

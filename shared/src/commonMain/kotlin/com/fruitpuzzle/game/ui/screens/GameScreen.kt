@@ -41,7 +41,7 @@ import com.fruitpuzzle.game.ui.components.SlotRack
 fun GameScreen(
   gameState: GameState,
   onTileClick: (tileId: Int, fromX: Float, fromY: Float, toX: Float, toY: Float) -> Unit,
-  onFlyComplete: () -> Unit,
+  onFlyComplete: (flightId: String) -> Unit,
   onDestroyComplete: () -> Unit,
   onNextLevel: () -> Unit,
   onRetry: () -> Unit,
@@ -78,7 +78,7 @@ fun GameScreen(
       SlotRack(
         rack = gameState.rack,
         destroyingIndices = gameState.destroyingIndices,
-        isDestroyPhase = gameState.phase == GamePhase.ANIMATING_DESTROY,
+        isDestroyPhase = gameState.destroyingIndices.isNotEmpty(),
         onDestroyComplete = onDestroyComplete,
         onSlotPositioned = { index, x, y ->
           slotPositions[index] = Pair(x, y)
@@ -92,10 +92,10 @@ fun GameScreen(
       GameBoard(
         board = gameState.board,
         clickableTileIds = gameState.clickableTileIds,
-        isInteractive = gameState.phase == GamePhase.PLAYING,
+        isInteractive = gameState.phase == GamePhase.PLAYING && !gameState.isRackFull,
         onTileClick = { tileId, fromX, fromY ->
           // Find the target slot position
-          val rackOccupied = gameState.rack.count { it.fruitType != null }
+          val rackOccupied = gameState.rack.count { !it.isEmpty }
           val targetIndex = rackOccupied.coerceAtMost(GameState.RACK_SIZE - 1)
           val targetPos = slotPositions[targetIndex] ?: Pair(0f, 0f)
           onTileClick(tileId, fromX, fromY, targetPos.first, targetPos.second)
@@ -107,13 +107,11 @@ fun GameScreen(
       )
     }
 
-    // ─── Flying Overlay (renders above everything) ───
-    if (gameState.phase == GamePhase.ANIMATING_FLY && gameState.flyingTile != null) {
-      FlyingOverlay(
-        flyingTile = gameState.flyingTile,
-        onAnimationComplete = onFlyComplete
-      )
-    }
+    // ─── Flying Overlay (renders above everything, concurrent flights supported) ───
+    FlyingOverlay(
+      flyingTiles = gameState.flyingTiles,
+      onFlyComplete = onFlyComplete
+    )
 
     // ─── Win Popup ───
     if (gameState.phase == GamePhase.WIN) {

@@ -50,7 +50,7 @@ fun App() {
         onTileClick = { tileId, fromX, fromY, toX, toY ->
           repository.selectTile(tileId, fromX, fromY, toX, toY)
         },
-        onFlyComplete = { repository.onFlyComplete() },
+        onFlyComplete = { flightId -> repository.onFlyComplete(flightId) },
         onDestroyComplete = { repository.onDestroyComplete() },
         onNextLevel = { repository.advanceLevel() },
         onRetry = { repository.retryLevel() },

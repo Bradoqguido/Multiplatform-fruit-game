@@ -71,7 +71,7 @@ class GameRepository(private val settings: Settings) {
         board = board,
         rack = List(GameState.RACK_SIZE) { idx -> RackSlot(index = idx) },
         phase = GamePhase.PLAYING,
-        flyingTile = null,
+        flyingTiles = emptyList(),
         destroyingIndices = emptyList(),
         clickableTileIds = clickable
       )
@@ -87,18 +87,15 @@ class GameRepository(private val settings: Settings) {
   }
 
   // ──────────────────────────────────────────
-  // Tile Selection
+  // Tile Selection (Instant & Non-Blocking)
   // ──────────────────────────────────────────
 
   /**
    * Called when the player taps a tile on the board.
-   * Removes the tile from the board and prepares the fly animation.
+   * Instantly removes the tile from the board, reserves its rack slot,
+   * checks for 3-matches, and launches a concurrent flying animation overlay.
    *
-   * @param tileId  The ID of the tapped tile.
-   * @param fromX   Absolute screen X of the tile (positionInRoot).
-   * @param fromY   Absolute screen Y of the tile (positionInRoot).
-   * @param toX     Absolute screen X of the target rack slot.
-   * @param toY     Absolute screen Y of the target rack slot.
+   * Does NOT block the UI — player can immediately tap another tile!
    */
   fun selectTile(tileId: Int, fromX: Float, fromY: Float, toX: Float, toY: Float) {
     val current = _state.value
@@ -107,105 +104,108 @@ class GameRepository(private val settings: Settings) {
     val tile = current.board.find { it.id == tileId && it.isVisible } ?: return
     if (tileId !in current.clickableTileIds) return
 
-    // Find the target slot index (where this fruit will land)
-    val targetSlotIndex = findInsertionIndex(current.rack, tile.fruitType)
+    // Ensure rack has space (less than 7 occupied)
+    if (current.rackOccupiedCount >= GameState.RACK_SIZE) return
 
-    // Remove tile from board (mark invisible)
+    // 1. Remove tile from board immediately & recalculate clickables
     val updatedBoard = current.board.map { t ->
       if (t.id == tileId) t.copy(isVisible = false) else t
     }
     val updatedClickable = LevelGenerator.calculateClickableTiles(updatedBoard)
 
-    _state.update {
-      it.copy(
-        board = updatedBoard,
-        clickableTileIds = updatedClickable,
-        phase = GamePhase.ANIMATING_FLY,
-        flyingTile = FlyingTile(
-          tile = tile,
-          fromX = fromX,
-          fromY = fromY,
-          toX = toX,
-          toY = toY,
-          targetSlotIndex = targetSlotIndex
-        )
-      )
-    }
-  }
+    // 2. Insert into rack immediately with grouping
+    val targetSlotIndex = findInsertionIndex(current.rack, tile.fruitType)
+    val updatedRack = insertIntoRack(current.rack, tile.fruitType)
 
-  /**
-   * Called when the fly animation completes.
-   * Inserts the fruit into the rack with grouping logic, then checks for matches.
-   */
-  fun onFlyComplete() {
-    val current = _state.value
-    val flying = current.flyingTile ?: return
+    // 3. Create concurrent flying tile animation
+    val flightId = "${tileId}_${tile.fruitType.name}_${updatedBoard.count { !it.isVisible }}"
+    val newFlyingTile = FlyingTile(
+      id = flightId,
+      fruitType = tile.fruitType,
+      fromX = fromX,
+      fromY = fromY,
+      toX = toX,
+      toY = toY,
+      targetSlotIndex = targetSlotIndex
+    )
+    val updatedFlyingTiles = current.flyingTiles + newFlyingTile
 
-    // Insert fruit into rack with grouping
-    val newRack = insertIntoRack(current.rack, flying.tile.fruitType)
+    // 4. Check for 3-matches immediately
+    val matchIndices = findMatchIndices(updatedRack)
+    val updatedDestroying = (current.destroyingIndices + matchIndices).distinct()
 
-    // Check for 3-match
-    val matchIndices = findMatchIndices(newRack)
-
-    if (matchIndices.isNotEmpty()) {
-      // Trigger destruction animation
-      _state.update {
-        it.copy(
-          rack = newRack,
-          flyingTile = null,
-          phase = GamePhase.ANIMATING_DESTROY,
-          destroyingIndices = matchIndices
-        )
-      }
-    } else {
-      // No match — check if rack is full (loss)
-      val occupiedCount = newRack.count { it.fruitType != null }
-      val newPhase = if (occupiedCount >= GameState.RACK_SIZE) {
-        GamePhase.LOSS
-      } else {
-        GamePhase.PLAYING
-      }
-
-      _state.update {
-        it.copy(
-          rack = newRack,
-          flyingTile = null,
-          phase = newPhase,
-          destroyingIndices = emptyList()
-        )
-      }
-    }
-  }
-
-  /**
-   * Called when the destruction animation completes.
-   * Removes the matched 3 from the rack, shifts remaining left, checks for win.
-   */
-  fun onDestroyComplete() {
-    val current = _state.value
-    val indices = current.destroyingIndices.toSet()
-
-    // Remove destroyed slots and shift left
-    val remaining = current.rack
-      .filter { it.index !in indices }
-      .mapIndexed { idx, slot -> slot.copy(index = idx) }
-
-    // Pad with empty slots to maintain RACK_SIZE
-    val newRack = remaining + List(GameState.RACK_SIZE - remaining.size) { idx ->
-      RackSlot(index = remaining.size + idx)
-    }
-
-    // Check win condition: board empty AND rack empty
-    val boardEmpty = !current.board.any { it.isVisible }
-    val rackEmpty = newRack.all { it.fruitType == null }
+    // 5. Determine new game phase
+    val boardEmpty = !updatedBoard.any { it.isVisible }
+    val rackEmpty = updatedRack.all { it.isEmpty }
+    val isFull = updatedRack.count { !it.isEmpty } >= GameState.RACK_SIZE
 
     val newPhase = when {
-      boardEmpty && rackEmpty -> GamePhase.WIN
+      boardEmpty && rackEmpty && updatedFlyingTiles.isEmpty() -> GamePhase.WIN
+      isFull && matchIndices.isEmpty() && updatedDestroying.isEmpty() -> GamePhase.LOSS
       else -> GamePhase.PLAYING
     }
 
     _state.update {
       it.copy(
+        board = updatedBoard,
+        rack = updatedRack,
+        clickableTileIds = updatedClickable,
+        flyingTiles = updatedFlyingTiles,
+        destroyingIndices = updatedDestroying,
+        phase = newPhase
+      )
+    }
+  }
+
+  /**
+   * Called when an individual flying tile animation finishes in the overlay.
+   */
+  fun onFlyComplete(flightId: String) {
+    _state.update { current ->
+      val updatedFlying = current.flyingTiles.filterNot { it.id == flightId }
+      val boardEmpty = !current.board.any { it.isVisible }
+      val rackEmpty = current.rack.all { it.isEmpty }
+
+      val newPhase = when {
+        boardEmpty && rackEmpty && updatedFlying.isEmpty() -> GamePhase.WIN
+        else -> current.phase
+      }
+
+      current.copy(
+        flyingTiles = updatedFlying,
+        phase = newPhase
+      )
+    }
+  }
+
+  /**
+   * Called when the destruction animation completes for matched tiles.
+   * Removes destroyed slots and shifts remaining slots left.
+   */
+  fun onDestroyComplete() {
+    _state.update { current ->
+      val indices = current.destroyingIndices.toSet()
+      if (indices.isEmpty()) return@update current
+
+      // Remove destroyed slots and shift left
+      val remaining = current.rack
+        .filter { it.index !in indices }
+        .mapIndexed { idx, slot -> slot.copy(index = idx) }
+
+      val newRack = remaining + List(GameState.RACK_SIZE - remaining.size) { idx ->
+        RackSlot(index = remaining.size + idx)
+      }
+
+      val boardEmpty = !current.board.any { it.isVisible }
+      val rackEmpty = newRack.all { it.isEmpty }
+
+      val newPhase = when {
+        boardEmpty && rackEmpty && current.flyingTiles.isEmpty() -> GamePhase.WIN
+        newRack.count { !it.isEmpty } >= GameState.RACK_SIZE -> GamePhase.LOSS
+        else -> GamePhase.PLAYING
+      }
+
+      current.copy(
         rack = newRack,
         phase = newPhase,
         destroyingIndices = emptyList()
