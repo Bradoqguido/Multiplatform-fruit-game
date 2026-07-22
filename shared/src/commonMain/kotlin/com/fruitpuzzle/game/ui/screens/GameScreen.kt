@@ -73,10 +73,6 @@ fun GameScreen(
     modifier = Modifier
       .fillMaxSize()
       .background(fruitThemeGradient(gameState.dominantFruit))
-      .graphicsLayer {
-        scaleX = gameState.uiScale
-        scaleY = gameState.uiScale
-      }
   ) {
     Column(
       modifier = Modifier.fillMaxSize()
@@ -99,6 +95,7 @@ fun GameScreen(
         onSlotPositioned = { index, x, y ->
           slotPositions[index] = Pair(x, y)
         },
+        uiScale = gameState.uiScale,
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = 8.dp, vertical = 8.dp)
@@ -150,6 +147,7 @@ fun GameScreen(
         board = gameState.board,
         clickableTileIds = gameState.clickableTileIds,
         isInteractive = gameState.phase == GamePhase.PLAYING && !gameState.isRackFull && !gameState.isPaused,
+        uiScale = gameState.uiScale,
         onTileClick = { tileId, fromX, fromY ->
           val rackOccupied = gameState.rack.count { !it.isEmpty }
           val targetIndex = rackOccupied.coerceAtMost(GameState.RACK_SIZE - 1)

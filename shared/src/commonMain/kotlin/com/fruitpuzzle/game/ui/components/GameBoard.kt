@@ -30,6 +30,7 @@ fun GameBoard(
   board: List<BoardTile>,
   clickableTileIds: Set<Int>,
   isInteractive: Boolean,
+  uiScale: Float = 1.0f,
   onTileClick: (tileId: Int, fromX: Float, fromY: Float) -> Unit,
   modifier: Modifier = Modifier
 ) {
@@ -43,17 +44,28 @@ fun GameBoard(
     // Calculate tile size based on available space and grid dimensions
     val columns = LevelGenerator.DEFAULT_COLUMNS
     val rows = LevelGenerator.DEFAULT_ROWS
-    val tileSize = minOf(
-      boardWidthPx / (columns + 1),
-      boardHeightPx / (rows + 1)
+
+    // Base tile size calculation
+    val baseTileSize = minOf(
+      boardWidthPx / (columns + 1.2f),
+      boardHeightPx / (rows + 1.2f)
     )
+
+    // Max tile size allowed before clipping screen boundaries
+    val maxAllowedTileSize = minOf(
+      boardWidthPx / (columns + 0.1f),
+      boardHeightPx / (rows + 0.1f)
+    )
+
+    // Apply uiScale while guaranteeing strict containment within device screen
+    val tileSize = (baseTileSize * uiScale).coerceAtMost(maxAllowedTileSize)
     val tileSizeDp = with(density) { tileSize.toDp() }
 
     // Center offset
     val totalGridWidth = columns * tileSize
     val totalGridHeight = rows * tileSize
-    val offsetX = (boardWidthPx - totalGridWidth) / 2
-    val offsetY = (boardHeightPx - totalGridHeight) / 2
+    val offsetX = (boardWidthPx - totalGridWidth) / 2f
+    val offsetY = (boardHeightPx - totalGridHeight) / 2f
 
     // Layer offset for visual overlap effect (shift higher layers slightly)
     val layerOffset = tileSize * 0.15f

@@ -26,6 +26,9 @@ import kotlinx.coroutines.delay
 
 import com.fruitpuzzle.game.ui.animation.shakeAnimation
 
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.unit.Dp
+
 /**
  * The 7-slot rack at the top of the game screen.
  * Shows occupied slots with fruit tiles and empty slots as bordered placeholders.
@@ -38,6 +41,7 @@ fun SlotRack(
   isDestroyPhase: Boolean,
   onDestroyComplete: () -> Unit,
   onSlotPositioned: (index: Int, x: Float, y: Float) -> Unit,
+  uiScale: Float = 1.0f,
   modifier: Modifier = Modifier
 ) {
   val occupiedCount = rack.count { !it.isEmpty }
@@ -50,28 +54,36 @@ fun SlotRack(
     }
   }
 
-  Row(
-    modifier = modifier
-      .shakeAnimation(
-        trigger = if (occupiedCount == 6 && !isDestroyPhase) occupiedCount else null,
-        shakeOffsetDp = 10f
-      )
-      .clip(RoundedCornerShape(16.dp))
-      .background(Color(0xFF2A2A4A).copy(alpha = 0.7f))
-      .padding(horizontal = 8.dp, vertical = 10.dp),
-    horizontalArrangement = Arrangement.SpaceEvenly,
-    verticalAlignment = Alignment.CenterVertically
-  ) {
-    for (slot in rack) {
-      val isDestroying = slot.index in destroyingIndices
+  BoxWithConstraints(modifier = modifier) {
+    val maxSlotWidth = (maxWidth - 32.dp) / 7.2f
+    val baseSlotSize = 46.dp * uiScale
+    val slotContainerSize = minOf(baseSlotSize, maxSlotWidth).coerceAtLeast(32.dp)
+    val tileInsideSize = slotContainerSize - 4.dp
 
-      // Each slot rendered via standalone composable to avoid RowScope receiver conflict
-      SlotContent(
-        fruitType = slot.fruitType,
-        slotIndex = slot.index,
-        isDestroying = isDestroying,
-        onSlotPositioned = onSlotPositioned
-      )
+    Row(
+      modifier = Modifier
+        .shakeAnimation(
+          trigger = if (occupiedCount == 6 && !isDestroyPhase) occupiedCount else null,
+          shakeOffsetDp = 10f
+        )
+        .clip(RoundedCornerShape(16.dp))
+        .background(Color(0xFF2A2A4A).copy(alpha = 0.7f))
+        .padding(horizontal = 8.dp, vertical = 8.dp),
+      horizontalArrangement = Arrangement.SpaceEvenly,
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      for (slot in rack) {
+        val isDestroying = slot.index in destroyingIndices
+
+        SlotContent(
+          fruitType = slot.fruitType,
+          slotIndex = slot.index,
+          isDestroying = isDestroying,
+          slotSize = slotContainerSize,
+          tileSize = tileInsideSize,
+          onSlotPositioned = onSlotPositioned
+        )
+      }
     }
   }
 }
@@ -85,11 +97,13 @@ private fun SlotContent(
   fruitType: FruitType?,
   slotIndex: Int,
   isDestroying: Boolean,
+  slotSize: Dp,
+  tileSize: Dp,
   onSlotPositioned: (index: Int, x: Float, y: Float) -> Unit
 ) {
   Box(
     modifier = Modifier
-      .size(46.dp)
+      .size(slotSize)
       .onGloballyPositioned { coordinates ->
         val pos = coordinates.positionInRoot()
         onSlotPositioned(slotIndex, pos.x, pos.y)
@@ -103,7 +117,7 @@ private fun SlotContent(
       ) {
         FruitTile(
           fruitType = fruitType,
-          size = 42.dp,
+          size = tileSize,
           isClickable = false
         )
       }
@@ -111,7 +125,7 @@ private fun SlotContent(
       // Empty slot placeholder
       Box(
         modifier = Modifier
-          .size(42.dp)
+          .size(tileSize)
           .clip(RoundedCornerShape(10.dp))
           .border(
             width = 1.5.dp,
