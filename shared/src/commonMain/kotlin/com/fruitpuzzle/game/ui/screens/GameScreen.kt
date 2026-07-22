@@ -37,8 +37,16 @@ import com.fruitpuzzle.game.ui.components.GameBoard
 import com.fruitpuzzle.game.ui.components.GamePopup
 import com.fruitpuzzle.game.ui.components.SlotRack
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import com.fruitpuzzle.game.model.FruitType
+import com.fruitpuzzle.game.ui.animation.shakeAnimation
+import com.fruitpuzzle.game.ui.components.MatchParticleOverlay
+import com.fruitpuzzle.game.ui.components.PauseMenuModal
+
 /**
- * Main game screen with header, slot rack, board, flying overlay, and popups.
+ * Main game screen with header, slot rack, board, flying overlay, pause menu, and popups.
  */
 @Composable
 fun GameScreen(
@@ -50,7 +58,13 @@ fun GameScreen(
   onNextLevel: () -> Unit,
   onRetry: () -> Unit,
   onContinueAfterGameOver: () -> Unit,
-  onBackToMenu: () -> Unit
+  onBackToMenu: () -> Unit,
+  onTogglePause: () -> Unit = {},
+  onToggleMute: (Boolean) -> Unit = {},
+  onBgmVolumeChange: (Float) -> Unit = {},
+  onSfxVolumeChange: (Float) -> Unit = {},
+  onUiScaleChange: (Float) -> Unit = {},
+  onFontScaleChange: (Float) -> Unit = {}
 ) {
   // Track absolute positions of rack slots for fly animation targeting
   val slotPositions = remember { mutableStateMapOf<Int, Pair<Float, Float>>() }
@@ -58,15 +72,11 @@ fun GameScreen(
   Box(
     modifier = Modifier
       .fillMaxSize()
-      .background(
-        Brush.verticalGradient(
-          colors = listOf(
-            Color(0xFF0D1B2A),
-            Color(0xFF1B2838),
-            Color(0xFF0D1B2A)
-          )
-        )
-      )
+      .background(fruitThemeGradient(gameState.dominantFruit))
+      .graphicsLayer {
+        scaleX = gameState.uiScale
+        scaleY = gameState.uiScale
+      }
   ) {
     Column(
       modifier = Modifier.fillMaxSize()
@@ -75,6 +85,8 @@ fun GameScreen(
       GameHeader(
         level = gameState.currentLevel,
         lives = gameState.lives,
+        fontScale = gameState.fontScale,
+        onPauseClick = onTogglePause,
         modifier = Modifier.fillMaxWidth()
       )
 
@@ -108,8 +120,8 @@ fun GameScreen(
           )
         ) {
           Text(
-            text = "🏠 Voltar ao Menu",
-            fontSize = 14.sp,
+            text = "🏠 Menu",
+            fontSize = 14.sp * gameState.fontScale,
             fontWeight = FontWeight.Bold,
             color = Color.White
           )
@@ -126,7 +138,7 @@ fun GameScreen(
         ) {
           Text(
             text = "↩️ Desfazer (${gameState.undoCount}/3)",
-            fontSize = 14.sp,
+            fontSize = 14.sp * gameState.fontScale,
             fontWeight = FontWeight.Bold,
             color = if (gameState.canUndo) Color.White else Color.White.copy(alpha = 0.4f)
           )
@@ -137,9 +149,8 @@ fun GameScreen(
       GameBoard(
         board = gameState.board,
         clickableTileIds = gameState.clickableTileIds,
-        isInteractive = gameState.phase == GamePhase.PLAYING && !gameState.isRackFull,
+        isInteractive = gameState.phase == GamePhase.PLAYING && !gameState.isRackFull && !gameState.isPaused,
         onTileClick = { tileId, fromX, fromY ->
-          // Find the target slot position
           val rackOccupied = gameState.rack.count { !it.isEmpty }
           val targetIndex = rackOccupied.coerceAtMost(GameState.RACK_SIZE - 1)
           val targetPos = slotPositions[targetIndex] ?: Pair(0f, 0f)
@@ -152,11 +163,36 @@ fun GameScreen(
       )
     }
 
-    // ─── Flying Overlay (renders above everything, concurrent flights supported) ───
+    // ─── Match Triumph Particle Burst Overlay ───
+    MatchParticleOverlay(
+      destroyingIndices = gameState.destroyingIndices,
+      slotPositions = slotPositions
+    )
+
+    // ─── Flying Overlay (renders above board) ───
     FlyingOverlay(
       flyingTiles = gameState.flyingTiles,
       onFlyComplete = onFlyComplete
     )
+
+    // ─── Pause Menu Modal ───
+    if (gameState.isPaused) {
+      PauseMenuModal(
+        isMuted = gameState.isMuted,
+        bgmVolume = gameState.bgmVolume,
+        sfxVolume = gameState.sfxVolume,
+        uiScale = gameState.uiScale,
+        fontScale = gameState.fontScale,
+        onResume = onTogglePause,
+        onMuteToggle = onToggleMute,
+        onBgmVolumeChange = onBgmVolumeChange,
+        onSfxVolumeChange = onSfxVolumeChange,
+        onUiScaleChange = onUiScaleChange,
+        onFontScaleChange = onFontScaleChange,
+        onRestart = onRetry,
+        onBackToMenu = onBackToMenu
+      )
+    }
 
     // ─── Win Popup ───
     if (gameState.phase == GamePhase.WIN) {
@@ -197,12 +233,14 @@ fun GameScreen(
 }
 
 /**
- * Header bar showing current level and lives.
+ * Header bar showing level, pause button, and animated life bar.
  */
 @Composable
 private fun GameHeader(
   level: Int,
   lives: Int,
+  fontScale: Float,
+  onPauseClick: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   Row(
@@ -212,21 +250,60 @@ private fun GameHeader(
     horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically
   ) {
-    Text(
-      text = "Nível $level",
-      fontSize = 22.sp,
-      fontWeight = FontWeight.Bold,
-      color = Color.White
-    )
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      Button(
+        onClick = onPauseClick,
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.15f))
+      ) {
+        Text(text = "⏸️", fontSize = 16.sp * fontScale, color = Color.White)
+      }
 
-    Row {
+      Spacer(modifier = Modifier.width(8.dp))
+
+      Text(
+        text = "Nível $level",
+        fontSize = 22.sp * fontScale,
+        fontWeight = FontWeight.Bold,
+        color = Color.White
+      )
+    }
+
+    Row(
+      modifier = Modifier.shakeAnimation(
+        trigger = lives,
+        continuous = (lives == 1),
+        shakeOffsetDp = 10f
+      )
+    ) {
       repeat(lives) {
-        Text(text = "❤️", fontSize = 20.sp)
+        Text(text = "❤️", fontSize = 20.sp * fontScale)
         if (it < lives - 1) Spacer(modifier = Modifier.width(4.dp))
       }
       repeat(3 - lives) {
-        Text(text = "🖤", fontSize = 20.sp)
+        Text(text = "🖤", fontSize = 20.sp * fontScale)
       }
     }
   }
+}
+
+/**
+ * Dynamic theme background gradient mapping based on dominant fruit.
+ */
+private fun fruitThemeGradient(fruitType: FruitType): Brush {
+  val baseColor = when (fruitType) {
+    FruitType.APPLE, FruitType.STRAWBERRY, FruitType.CHERRY, FruitType.RUBY, FruitType.WATERMELON -> Color(0xFF3E101D)
+    FruitType.GREEN_APPLE, FruitType.MELON, FruitType.PEAR, FruitType.EMERALD -> Color(0xFF132A13)
+    FruitType.ORANGE, FruitType.PEACH, FruitType.AMBER -> Color(0xFF3A1C08)
+    FruitType.LEMON, FruitType.BANANA, FruitType.PINEAPPLE, FruitType.TOPAZ -> Color(0xFF332D06)
+    FruitType.GRAPE, FruitType.AMETHYST -> Color(0xFF25103E)
+    FruitType.DIAMOND, FruitType.SAPPHIRE, FruitType.BLUE_GEM -> Color(0xFF0C2340)
+  }
+  return Brush.verticalGradient(
+    colors = listOf(
+      baseColor,
+      Color(0xFF0D1B2A),
+      baseColor
+    )
+  )
 }

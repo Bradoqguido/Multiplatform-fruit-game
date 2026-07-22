@@ -56,7 +56,13 @@ fun App() {
         onNextLevel = { repository.advanceLevel() },
         onRetry = { repository.retryLevel() },
         onContinueAfterGameOver = { repository.continueAfterGameOver() },
-        onBackToMenu = { currentScreen = Screen.START }
+        onBackToMenu = { currentScreen = Screen.START },
+        onTogglePause = { repository.togglePause() },
+        onToggleMute = { muted -> repository.toggleMute(muted) },
+        onBgmVolumeChange = { vol -> repository.setBgmVolume(vol) },
+        onSfxVolumeChange = { vol -> repository.setSfxVolume(vol) },
+        onUiScaleChange = { scale -> repository.setUiScale(scale) },
+        onFontScaleChange = { scale -> repository.setFontScale(scale) }
       )
     }
   }
