@@ -39,6 +39,7 @@ class GameRepository(private val settings: Settings) {
   fun startLevel(level: Int) {
     val board = LevelGenerator.generate(level)
     val clickable = LevelGenerator.calculateClickableTiles(board)
+    val dominant = calculateDominantFruit(board)
 
     _state.update {
       it.copy(
@@ -50,11 +51,14 @@ class GameRepository(private val settings: Settings) {
         flyingTiles = emptyList(),
         destroyingIndices = emptyList(),
         clickableTileIds = clickable,
+        dominantFruit = dominant,
         undoCount = GameState.MAX_UNDOS,
-        moveHistory = emptyList()
+        moveHistory = emptyList(),
+        isPaused = false
       )
     }
     saveProgress()
+    com.fruitpuzzle.game.audio.AudioEngine.startBgMusic(_state.value.bgmVolume, _state.value.isMuted)
   }
 
   fun startCurrentLevel() {
@@ -63,12 +67,13 @@ class GameRepository(private val settings: Settings) {
 
   fun selectTile(tileId: Int, fromX: Float, fromY: Float, toX: Float, toY: Float) {
     val current = _state.value
-    if (current.phase != GamePhase.PLAYING) return
+    if (current.phase != GamePhase.PLAYING || current.isPaused) return
 
     val tile = current.board.find { it.id == tileId && it.isVisible } ?: return
     if (tileId !in current.clickableTileIds) return
-
     if (current.rackOccupiedCount >= GameState.RACK_SIZE) return
+
+    com.fruitpuzzle.game.audio.AudioEngine.playClickSfx(current.sfxVolume, current.isMuted)
 
     val record = MoveRecord(
       tileId = tileId,
@@ -82,6 +87,7 @@ class GameRepository(private val settings: Settings) {
       if (t.id == tileId) t.copy(isVisible = false) else t
     }
     val updatedClickable = LevelGenerator.calculateClickableTiles(updatedBoard)
+    val updatedDominant = calculateDominantFruit(updatedBoard)
 
     val targetSlotIndex = findInsertionIndex(current.rack, tile.fruitType)
     val updatedRack = insertIntoRack(current.rack, tile.fruitType)
@@ -98,20 +104,13 @@ class GameRepository(private val settings: Settings) {
     )
     val updatedFlyingTiles = current.flyingTiles + newFlyingTile
 
-    // Match destruction is deferred to onFlyComplete so the tile lands and forms the complete 3-piece group first.
-    val isFull = updatedRack.count { !it.isEmpty } >= GameState.RACK_SIZE
-    val newPhase = when {
-      isFull && current.destroyingIndices.isEmpty() -> GamePhase.LOSS
-      else -> GamePhase.PLAYING
-    }
-
     _state.update {
       it.copy(
         board = updatedBoard,
         rack = updatedRack,
         clickableTileIds = updatedClickable,
         flyingTiles = updatedFlyingTiles,
-        phase = newPhase,
+        dominantFruit = updatedDominant,
         moveHistory = updatedHistory
       )
     }
@@ -124,6 +123,7 @@ class GameRepository(private val settings: Settings) {
     val lastRecord = current.moveHistory.last()
     val updatedHistory = current.moveHistory.dropLast(1)
     val restoredClickable = LevelGenerator.calculateClickableTiles(lastRecord.boardState)
+    val restoredDominant = calculateDominantFruit(lastRecord.boardState)
 
     _state.update {
       it.copy(
@@ -132,6 +132,7 @@ class GameRepository(private val settings: Settings) {
         destroyingIndices = lastRecord.destroyingIndices,
         clickableTileIds = restoredClickable,
         flyingTiles = emptyList(),
+        dominantFruit = restoredDominant,
         undoCount = current.undoCount - 1,
         moveHistory = updatedHistory,
         phase = GamePhase.PLAYING
@@ -140,29 +141,38 @@ class GameRepository(private val settings: Settings) {
   }
 
   fun onFlyComplete(flightId: String) {
-    _state.update { current ->
-      val updatedFlying = current.flyingTiles.filterNot { it.id == flightId }
+    val current = _state.value
+    com.fruitpuzzle.game.audio.AudioEngine.playDropSfx(current.sfxVolume, current.isMuted)
+
+    _state.update { curr ->
+      val updatedFlying = curr.flyingTiles.filterNot { it.id == flightId }
 
       // Check for 3-of-a-kind match ONLY after flying tile lands in slot rack
       val matchIndices = if (updatedFlying.isEmpty()) {
-        findMatchIndices(current.rack)
+        findMatchIndices(curr.rack)
       } else {
         emptyList()
       }
 
-      val updatedDestroying = (current.destroyingIndices + matchIndices).distinct()
+      if (matchIndices.isNotEmpty()) {
+        com.fruitpuzzle.game.audio.AudioEngine.playMatchSfx(curr.sfxVolume, curr.isMuted)
+      }
 
-      val boardEmpty = !current.board.any { it.isVisible }
-      val rackEmpty = current.rack.all { it.isEmpty }
-      val isFull = current.rack.count { !it.isEmpty } >= GameState.RACK_SIZE
+      val updatedDestroying = (curr.destroyingIndices + matchIndices).distinct()
 
+      val boardEmpty = !curr.board.any { it.isVisible }
+      val rackEmpty = curr.rack.all { it.isEmpty }
+      val isFull = curr.rack.count { !it.isEmpty } >= GameState.RACK_SIZE
+
+      // 7-slot fill verification rule:
+      // If 7 slots are full AND no match is formed AND no destroying animation active -> Game Over / Life Lost
       val newPhase = when {
         boardEmpty && rackEmpty && updatedFlying.isEmpty() && updatedDestroying.isEmpty() -> GamePhase.WIN
         isFull && matchIndices.isEmpty() && updatedDestroying.isEmpty() && updatedFlying.isEmpty() -> GamePhase.LOSS
-        else -> current.phase
+        else -> curr.phase
       }
 
-      current.copy(
+      curr.copy(
         flyingTiles = updatedFlying,
         destroyingIndices = updatedDestroying,
         phase = newPhase
@@ -198,6 +208,39 @@ class GameRepository(private val settings: Settings) {
         destroyingIndices = emptyList()
       )
     }
+  }
+
+  fun togglePause() {
+    _state.update { it.copy(isPaused = !it.isPaused) }
+  }
+
+  fun toggleMute(muted: Boolean) {
+    _state.update { it.copy(isMuted = muted) }
+    com.fruitpuzzle.game.audio.AudioEngine.updateBgmVolume(_state.value.bgmVolume, muted)
+  }
+
+  fun setBgmVolume(volume: Float) {
+    _state.update { it.copy(bgmVolume = volume) }
+    com.fruitpuzzle.game.audio.AudioEngine.updateBgmVolume(volume, _state.value.isMuted)
+  }
+
+  fun setSfxVolume(volume: Float) {
+    _state.update { it.copy(sfxVolume = volume) }
+  }
+
+  fun setUiScale(scale: Float) {
+    _state.update { it.copy(uiScale = scale) }
+  }
+
+  fun setFontScale(scale: Float) {
+    _state.update { it.copy(fontScale = scale) }
+  }
+
+  private fun calculateDominantFruit(board: List<BoardTile>): FruitType {
+    val visible = board.filter { it.isVisible }
+    if (visible.isEmpty()) return FruitType.APPLE
+    return visible.groupBy { it.fruitType }
+      .maxByOrNull { it.value.size }?.key ?: FruitType.APPLE
   }
 
   fun advanceLevel() {
