@@ -38,10 +38,10 @@ fun SlotRack(
   onSlotPositioned: (index: Int, x: Float, y: Float) -> Unit,
   modifier: Modifier = Modifier
 ) {
-  // Trigger destroy callback after animation completes
+  // Trigger destroy callback after full 3-piece match group is displayed in the rack
   if (isDestroyPhase) {
     LaunchedEffect(destroyingIndices) {
-      delay(200) // fast 200ms destruction animation
+      delay(300) // 300ms delay allows user to visually see the complete 3-piece group formed in slots
       onDestroyComplete()
     }
   }

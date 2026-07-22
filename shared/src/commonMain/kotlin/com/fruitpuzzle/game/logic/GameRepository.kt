@@ -98,16 +98,10 @@ class GameRepository(private val settings: Settings) {
     )
     val updatedFlyingTiles = current.flyingTiles + newFlyingTile
 
-    val matchIndices = findMatchIndices(updatedRack)
-    val updatedDestroying = (current.destroyingIndices + matchIndices).distinct()
-
-    val boardEmpty = !updatedBoard.any { it.isVisible }
-    val rackEmpty = updatedRack.all { it.isEmpty }
+    // Match destruction is deferred to onFlyComplete so the tile lands and forms the complete 3-piece group first.
     val isFull = updatedRack.count { !it.isEmpty } >= GameState.RACK_SIZE
-
     val newPhase = when {
-      boardEmpty && rackEmpty && updatedFlyingTiles.isEmpty() -> GamePhase.WIN
-      isFull && matchIndices.isEmpty() && updatedDestroying.isEmpty() -> GamePhase.LOSS
+      isFull && current.destroyingIndices.isEmpty() -> GamePhase.LOSS
       else -> GamePhase.PLAYING
     }
 
@@ -117,7 +111,6 @@ class GameRepository(private val settings: Settings) {
         rack = updatedRack,
         clickableTileIds = updatedClickable,
         flyingTiles = updatedFlyingTiles,
-        destroyingIndices = updatedDestroying,
         phase = newPhase,
         moveHistory = updatedHistory
       )
@@ -149,16 +142,29 @@ class GameRepository(private val settings: Settings) {
   fun onFlyComplete(flightId: String) {
     _state.update { current ->
       val updatedFlying = current.flyingTiles.filterNot { it.id == flightId }
+
+      // Check for 3-of-a-kind match ONLY after flying tile lands in slot rack
+      val matchIndices = if (updatedFlying.isEmpty()) {
+        findMatchIndices(current.rack)
+      } else {
+        emptyList()
+      }
+
+      val updatedDestroying = (current.destroyingIndices + matchIndices).distinct()
+
       val boardEmpty = !current.board.any { it.isVisible }
       val rackEmpty = current.rack.all { it.isEmpty }
+      val isFull = current.rack.count { !it.isEmpty } >= GameState.RACK_SIZE
 
       val newPhase = when {
-        boardEmpty && rackEmpty && updatedFlying.isEmpty() -> GamePhase.WIN
+        boardEmpty && rackEmpty && updatedFlying.isEmpty() && updatedDestroying.isEmpty() -> GamePhase.WIN
+        isFull && matchIndices.isEmpty() && updatedDestroying.isEmpty() && updatedFlying.isEmpty() -> GamePhase.LOSS
         else -> current.phase
       }
 
       current.copy(
         flyingTiles = updatedFlying,
+        destroyingIndices = updatedDestroying,
         phase = newPhase
       )
     }
