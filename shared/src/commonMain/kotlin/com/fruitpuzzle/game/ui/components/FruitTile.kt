@@ -51,8 +51,8 @@ fun FruitTile(
   val bottomWallColor = darkenColor(mainColor, 0.45f)
   val baseCornerColor = darkenColor(mainColor, 0.60f)
 
-  val brickShape = RoundedCornerShape(8.dp)
-  val topFaceShape = RoundedCornerShape(topStart = 8.dp, topEnd = 7.dp, bottomStart = 7.dp, bottomEnd = 4.dp)
+  val brickShape = RoundedCornerShape(14.dp)
+  val topFaceShape = RoundedCornerShape(topStart = 14.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 8.dp)
 
   Box(
     modifier = modifier
@@ -72,7 +72,7 @@ fun FruitTile(
       val h = this.size.height
       val dx = depthX.toPx()
       val dy = depthY.toPx()
-      val cornerR = 6.dp.toPx()
+      val cornerR = 10.dp.toPx()
 
       // Base background fill (dark corner back)
       drawRoundRect(
@@ -134,11 +134,11 @@ fun FruitTile(
       Box(
         modifier = Modifier
           .fillMaxSize()
-          .padding(2.dp)
+          .padding(2.5.dp)
           .border(
             width = 1.dp,
             color = Color.White.copy(alpha = 0.25f),
-            shape = RoundedCornerShape(6.dp)
+            shape = RoundedCornerShape(10.dp)
           )
       )
 
