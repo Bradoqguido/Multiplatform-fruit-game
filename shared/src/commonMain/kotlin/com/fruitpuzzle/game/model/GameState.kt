@@ -24,7 +24,14 @@ data class GameState(
   val phase: GamePhase = GamePhase.IDLE,
   val flyingTiles: List<FlyingTile> = emptyList(),
   val destroyingIndices: List<Int> = emptyList(),
-  val clickableTileIds: Set<Int> = emptySet()
+  val clickableTileIds: Set<Int> = emptySet(),
+  val dominantFruit: FruitType = FruitType.APPLE,
+  val isPaused: Boolean = false,
+  val isMuted: Boolean = false,
+  val bgmVolume: Float = 0.5f,
+  val sfxVolume: Float = 0.8f,
+  val uiScale: Float = 1.0f,
+  val fontScale: Float = 1.0f
 ) {
   companion object {
     /** Fixed rack capacity — game is lost when all 7 slots fill without a match. */
