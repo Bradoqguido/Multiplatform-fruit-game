@@ -40,15 +40,8 @@ enum class FruitType(val emoji: String, val label: String) {
      * Difficulty scales by unlocking more types.
      */
     fun availableForLevel(level: Int): List<FruitType> {
-      val count = when {
-        level <= 2 -> 4
-        level <= 4 -> 6
-        level <= 6 -> 8
-        level <= 8 -> 10
-        level <= 10 -> 13
-        level <= 14 -> 16
-        else -> TOTAL_COUNT
-      }
+      // Level 1 starts with 4 types, adding +1 variation per level up to max (21 types at level 18)
+      val count = (3 + level).coerceAtMost(TOTAL_COUNT)
       return entries.take(count)
     }
   }
