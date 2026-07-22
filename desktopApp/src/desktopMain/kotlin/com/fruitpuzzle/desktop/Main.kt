@@ -11,7 +11,7 @@ import com.fruitpuzzle.game.ui.App
  */
 fun main() = application {
   Window(
-    title = "Fruit Puzzle - Triple Match",
+    title = "Jogo das Frutas - Trinca de Frutas",
     state = rememberWindowState(width = 420.dp, height = 800.dp),
     onCloseRequest = ::exitApplication
   ) {

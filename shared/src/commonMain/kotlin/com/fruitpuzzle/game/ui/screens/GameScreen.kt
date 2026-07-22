@@ -116,11 +116,11 @@ fun GameScreen(
     // ─── Win Popup ───
     if (gameState.phase == GamePhase.WIN) {
       GamePopup(
-        title = "🎉 Congratulations!",
-        message = "Level ${gameState.currentLevel} cleared!",
-        primaryButtonText = "Next Level",
+        title = "🎉 Parabéns!",
+        message = "Nível ${gameState.currentLevel} concluído com sucesso!",
+        primaryButtonText = "Próximo Nível",
         onPrimaryClick = onNextLevel,
-        secondaryButtonText = "Menu",
+        secondaryButtonText = "Menu Inicial",
         onSecondaryClick = onBackToMenu
       )
     }
@@ -128,11 +128,11 @@ fun GameScreen(
     // ─── Loss Popup ───
     if (gameState.phase == GamePhase.LOSS) {
       GamePopup(
-        title = "😔 Try Again",
-        message = "Rack is full!\nLives remaining: ${gameState.lives}",
-        primaryButtonText = "Retry (−1 ❤️)",
+        title = "😔 Tente Novamente",
+        message = "As vagas estão cheias!\nVidas restantes: ${gameState.lives}",
+        primaryButtonText = "Tentar Novamente (−1 ❤️)",
         onPrimaryClick = onRetry,
-        secondaryButtonText = "Menu",
+        secondaryButtonText = "Menu Inicial",
         onSecondaryClick = onBackToMenu
       )
     }
@@ -140,11 +140,11 @@ fun GameScreen(
     // ─── Game Over Popup ───
     if (gameState.phase == GamePhase.GAME_OVER) {
       GamePopup(
-        title = "💀 Game Over",
-        message = "Lives depleted! Back to Level ${gameState.currentLevel}.\nLives refilled to 3.",
-        primaryButtonText = "Continue",
+        title = "💀 Fim de Jogo",
+        message = "Suas vidas acabaram!\nRetornando ao Nível ${gameState.currentLevel}.\nVidas recarregadas para 3.",
+        primaryButtonText = "Continuar",
         onPrimaryClick = onContinueAfterGameOver,
-        secondaryButtonText = "Menu",
+        secondaryButtonText = "Menu Inicial",
         onSecondaryClick = onBackToMenu
       )
     }
@@ -168,7 +168,7 @@ private fun GameHeader(
     verticalAlignment = Alignment.CenterVertically
   ) {
     Text(
-      text = "Level $level",
+      text = "Nível $level",
       fontSize = 22.sp,
       fontWeight = FontWeight.Bold,
       color = Color.White

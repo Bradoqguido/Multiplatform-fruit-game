@@ -69,7 +69,7 @@ fun StartScreen(
 
       // Title
       Text(
-        text = "Fruit Puzzle",
+        text = "Jogo das Frutas",
         fontSize = 42.sp,
         fontWeight = FontWeight.ExtraBold,
         color = Color.White,
@@ -77,7 +77,7 @@ fun StartScreen(
       )
 
       Text(
-        text = "Triple Match",
+        text = "Trinca de Frutas",
         fontSize = 22.sp,
         fontWeight = FontWeight.Medium,
         color = Color(0xFFFFCC80),
@@ -99,7 +99,7 @@ fun StartScreen(
         shape = RoundedCornerShape(28.dp)
       ) {
         Text(
-          text = "▶  Start Game",
+          text = "▶  Iniciar Jogo",
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
           color = Color.White
@@ -118,7 +118,7 @@ fun StartScreen(
           shape = RoundedCornerShape(24.dp)
         ) {
           Text(
-            text = "Exit",
+            text = "Sair",
             fontSize = 16.sp,
             color = Color.White.copy(alpha = 0.8f)
           )
@@ -128,7 +128,7 @@ fun StartScreen(
       Spacer(modifier = Modifier.height(32.dp))
 
       Text(
-        text = "100% Offline • No Ads",
+        text = "100% Offline • Sem Anúncios",
         fontSize = 14.sp,
         color = Color.White.copy(alpha = 0.5f),
         textAlign = TextAlign.Center
