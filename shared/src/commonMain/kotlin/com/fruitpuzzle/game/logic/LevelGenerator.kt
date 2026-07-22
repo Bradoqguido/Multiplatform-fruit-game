@@ -156,7 +156,8 @@ object LevelGenerator {
   fun calculateClickableTiles(board: List<BoardTile>): Set<Int> {
     val visibleTiles = board.filter { it.isVisible }
     val layerOffset = 0.15f
-    val overlapThreshold = 0.85f
+    val tileWidth = 1.0f
+    val tileHeight = 1.0f
 
     val clickableIds = mutableSetOf<Int>()
 
@@ -164,17 +165,21 @@ object LevelGenerator {
       val xA = tileA.gridX + tileA.layer * layerOffset
       val yA = tileA.gridY + tileA.layer * layerOffset
 
-      val isBlocked = visibleTiles.any { tileB ->
-        if (tileB.layer <= tileA.layer) {
-          false
-        } else {
-          val xB = tileB.gridX + tileB.layer * layerOffset
-          val yB = tileB.gridY + tileB.layer * layerOffset
-          kotlin.math.abs(xB - xA) < overlapThreshold && kotlin.math.abs(yB - yA) < overlapThreshold
-        }
+      var maxCoveredArea = 0.0f
+
+      val higherTiles = visibleTiles.filter { it.layer > tileA.layer }
+      for (tileB in higherTiles) {
+        val xB = tileB.gridX + tileB.layer * layerOffset
+        val yB = tileB.gridY + tileB.layer * layerOffset
+
+        val overlapX = maxOf(0.0f, minOf(xA + tileWidth, xB + tileWidth) - maxOf(xA, xB))
+        val overlapY = maxOf(0.0f, minOf(yA + tileHeight, yB + tileHeight) - maxOf(yA, yB))
+        val overlapArea = overlapX * overlapY
+        maxCoveredArea = maxOf(maxCoveredArea, overlapArea)
       }
 
-      if (!isBlocked) {
+      // Tile is clickable if at least 90% exposed (covered area <= 10% or 0.10f)
+      if (maxCoveredArea <= 0.10f) {
         clickableIds.add(tileA.id)
       }
     }

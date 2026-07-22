@@ -92,19 +92,34 @@ fun GameScreen(
           .padding(horizontal = 8.dp, vertical = 8.dp)
       )
 
-      // ─── Controls / Undo Action Bar ───
+      // ─── Controls / Action Bar (Menu & Undo) ───
       Row(
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = 16.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
+        Button(
+          onClick = onBackToMenu,
+          shape = RoundedCornerShape(20.dp),
+          colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF37474F)
+          )
+        ) {
+          Text(
+            text = "🏠 Menu",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+          )
+        }
+
         Button(
           onClick = onUndoClick,
           enabled = gameState.canUndo,
           shape = RoundedCornerShape(20.dp),
-          colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+          colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF3F51B5),
             disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
           )

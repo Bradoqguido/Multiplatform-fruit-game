@@ -43,6 +43,7 @@ class GameRepository(private val settings: Settings) {
     _state.update {
       it.copy(
         currentLevel = level,
+        lives = DEFAULT_LIVES,
         board = board,
         rack = List(GameState.RACK_SIZE) { idx -> RackSlot(index = idx) },
         phase = GamePhase.PLAYING,
