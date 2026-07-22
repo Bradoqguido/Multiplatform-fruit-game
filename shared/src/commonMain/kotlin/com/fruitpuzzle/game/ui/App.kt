@@ -52,6 +52,7 @@ fun App() {
         },
         onFlyComplete = { flightId -> repository.onFlyComplete(flightId) },
         onDestroyComplete = { repository.onDestroyComplete() },
+        onUndoClick = { repository.undoMove() },
         onNextLevel = { repository.advanceLevel() },
         onRetry = { repository.retryLevel() },
         onContinueAfterGameOver = { repository.continueAfterGameOver() },

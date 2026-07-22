@@ -79,17 +79,12 @@ fun GameBoard(
             fruitType = tile.fruitType,
             size = tileSizeDp - 4.dp,
             isClickable = isClickable,
+            isBlocked = tile.id !in clickableTileIds,
             onClick = {
               if (isClickable) {
-                // We need the absolute position — use the parent offset
-                // (approximate from grid calculation)
                 onTileClick(tile.id, x + offsetX, y + offsetY)
               }
-            },
-            modifier = Modifier
-              .onGloballyPositioned { coordinates ->
-                // Track position for animation if needed
-              }
+            }
           )
         }
       }

@@ -1,12 +1,24 @@
 package com.fruitpuzzle.game.model
 
 /**
+ * Snapshot of a single move for the undo feature.
+ */
+data class MoveRecord(
+  val tileId: Int,
+  val boardState: List<BoardTile>,
+  val rackState: List<RackSlot>,
+  val destroyingIndices: List<Int>
+)
+
+/**
  * Immutable snapshot of the entire game state.
  * Drives all UI rendering via StateFlow.
  */
 data class GameState(
   val currentLevel: Int = 1,
   val lives: Int = 3,
+  val undoCount: Int = 3,
+  val moveHistory: List<MoveRecord> = emptyList(),
   val board: List<BoardTile> = emptyList(),
   val rack: List<RackSlot> = List(RACK_SIZE) { RackSlot(index = it) },
   val phase: GamePhase = GamePhase.IDLE,
@@ -17,6 +29,8 @@ data class GameState(
   companion object {
     /** Fixed rack capacity — game is lost when all 7 slots fill without a match. */
     const val RACK_SIZE: Int = 7
+    /** Max undo moves allowed per level. */
+    const val MAX_UNDOS: Int = 3
   }
 
   /** Number of occupied slots in the rack. */
@@ -34,6 +48,10 @@ data class GameState(
   /** Whether the rack is full (all 7 slots occupied). */
   val isRackFull: Boolean
     get() = rackOccupiedCount == RACK_SIZE
+
+  /** Whether the player can perform an undo. */
+  val canUndo: Boolean
+    get() = undoCount > 0 && moveHistory.isNotEmpty() && phase == GamePhase.PLAYING
 }
 
 /**

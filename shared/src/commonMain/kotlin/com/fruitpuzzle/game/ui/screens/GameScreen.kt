@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +46,7 @@ fun GameScreen(
   onTileClick: (tileId: Int, fromX: Float, fromY: Float, toX: Float, toY: Float) -> Unit,
   onFlyComplete: (flightId: String) -> Unit,
   onDestroyComplete: () -> Unit,
+  onUndoClick: () -> Unit,
   onNextLevel: () -> Unit,
   onRetry: () -> Unit,
   onContinueAfterGameOver: () -> Unit,
@@ -87,6 +91,32 @@ fun GameScreen(
           .fillMaxWidth()
           .padding(horizontal = 8.dp, vertical = 8.dp)
       )
+
+      // ─── Controls / Undo Action Bar ───
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 16.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Button(
+          onClick = onUndoClick,
+          enabled = gameState.canUndo,
+          shape = RoundedCornerShape(20.dp),
+          colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF3F51B5),
+            disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
+          )
+        ) {
+          Text(
+            text = "↩️ Desfazer (${gameState.undoCount}/3)",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (gameState.canUndo) Color.White else Color.White.copy(alpha = 0.4f)
+          )
+        }
+      }
 
       // ─── Board ───
       GameBoard(

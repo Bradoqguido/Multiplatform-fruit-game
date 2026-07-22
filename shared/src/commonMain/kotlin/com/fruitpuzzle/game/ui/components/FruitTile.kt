@@ -3,6 +3,7 @@ package com.fruitpuzzle.game.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -31,23 +32,26 @@ fun FruitTile(
   fruitType: FruitType,
   size: Dp = 48.dp,
   isClickable: Boolean = true,
+  isBlocked: Boolean = false,
   onClick: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
-  val bgColor = fruitBackgroundColor(fruitType)
+  val baseBgColor = fruitBackgroundColor(fruitType)
+  val bgColor = if (isBlocked) baseBgColor.copy(alpha = 0.6f) else baseBgColor
+  val canClick = isClickable && !isBlocked
 
   Box(
     modifier = modifier
       .size(size)
       .shadow(
-        elevation = if (isClickable) 4.dp else 1.dp,
+        elevation = if (canClick) 4.dp else 0.dp,
         shape = RoundedCornerShape(12.dp),
-        ambientColor = bgColor.copy(alpha = 0.3f)
+        ambientColor = baseBgColor.copy(alpha = 0.3f)
       )
       .clip(RoundedCornerShape(12.dp))
       .background(bgColor)
       .then(
-        if (isClickable) Modifier.clickable(onClick = onClick) else Modifier
+        if (canClick) Modifier.clickable(onClick = onClick) else Modifier
       ),
     contentAlignment = Alignment.Center
   ) {
@@ -55,6 +59,15 @@ fun FruitTile(
       text = fruitType.emoji,
       fontSize = (size.value * 0.55f).sp
     )
+
+    // Dark shading overlay if blocked by higher layers
+    if (isBlocked) {
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .background(Color.Black.copy(alpha = 0.35f))
+      )
+    }
   }
 }
 
