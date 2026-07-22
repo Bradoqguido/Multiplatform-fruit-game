@@ -42,6 +42,7 @@ fun SlotRack(
   onDestroyComplete: () -> Unit,
   onSlotPositioned: (index: Int, x: Float, y: Float) -> Unit,
   uiScale: Float = 1.0f,
+  fontScale: Float = 1.0f,
   modifier: Modifier = Modifier
 ) {
   val occupiedCount = rack.count { !it.isEmpty }
@@ -55,20 +56,22 @@ fun SlotRack(
   }
 
   BoxWithConstraints(modifier = modifier) {
-    val maxSlotWidth = (maxWidth - 32.dp) / 7.2f
-    val baseSlotSize = 46.dp * uiScale
+    val effectiveScale = uiScale * fontScale.coerceIn(0.85f, 1.2f)
+    val maxSlotWidth = (maxWidth - 24.dp) / 7.1f
+    val baseSlotSize = 46.dp * effectiveScale
     val slotContainerSize = minOf(baseSlotSize, maxSlotWidth).coerceAtLeast(32.dp)
     val tileInsideSize = slotContainerSize - 4.dp
 
     Row(
       modifier = Modifier
+        .fillMaxWidth()
         .shakeAnimation(
           trigger = if (occupiedCount == 6 && !isDestroyPhase) occupiedCount else null,
           shakeOffsetDp = 10f
         )
         .clip(RoundedCornerShape(16.dp))
         .background(Color(0xFF2A2A4A).copy(alpha = 0.7f))
-        .padding(horizontal = 8.dp, vertical = 8.dp),
+        .padding(horizontal = 6.dp, vertical = 8.dp),
       horizontalArrangement = Arrangement.SpaceEvenly,
       verticalAlignment = Alignment.CenterVertically
     ) {

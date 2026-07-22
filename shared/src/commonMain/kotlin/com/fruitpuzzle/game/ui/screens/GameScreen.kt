@@ -96,6 +96,7 @@ fun GameScreen(
           slotPositions[index] = Pair(x, y)
         },
         uiScale = gameState.uiScale,
+        fontScale = gameState.fontScale,
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = 8.dp, vertical = 8.dp)
