@@ -42,91 +42,76 @@ fun FruitTile(
   val baseBgColor = fruitBackgroundColor(fruitType)
   val canClick = isClickable && !isBlocked
 
-  // 3D Extrusion Depth (right & bottom side wall thickness)
-  val depthX = (size.value * 0.12f).dp // ~5.8dp for 48dp tile
-  val depthY = (size.value * 0.15f).dp // ~7.2dp for 48dp tile
+  // 3D Extrusion Depth (smooth 3D depth offset)
+  val depthX = (size.value * 0.10f).dp
+  val depthY = (size.value * 0.12f).dp
 
   val mainColor = if (isBlocked) baseBgColor.copy(alpha = 0.65f) else baseBgColor
-  val rightWallColor = darkenColor(mainColor, 0.30f)
-  val bottomWallColor = darkenColor(mainColor, 0.45f)
-  val baseCornerColor = darkenColor(mainColor, 0.60f)
+  val baseColor = mainColor.darken(0.24f)
+  val sideWallColor = mainColor.darken(0.16f)
 
-  val brickShape = RoundedCornerShape(14.dp)
-  val topFaceShape = RoundedCornerShape(topStart = 14.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 8.dp)
+  val roundedShape = RoundedCornerShape(12.dp)
 
   Box(
     modifier = modifier
       .size(size)
       .shadow(
-        elevation = if (canClick) 8.dp else 2.dp,
-        shape = brickShape,
-        ambientColor = Color.Black.copy(alpha = 0.5f),
-        spotColor = Color.Black.copy(alpha = 0.6f)
+        elevation = if (canClick) 6.dp else 2.dp,
+        shape = roundedShape,
+        ambientColor = Color.Black.copy(alpha = 0.4f),
+        spotColor = Color.Black.copy(alpha = 0.5f)
       )
       .then(if (canClick) Modifier.clickable(onClick = onClick) else Modifier),
     contentAlignment = Alignment.TopStart
   ) {
-    // 1. Extruded 3D Side Walls (Canvas drawing trapezoidal side walls for real 3D depth)
-    Canvas(modifier = Modifier.fillMaxSize()) {
-      val w = this.size.width
-      val h = this.size.height
-      val dx = depthX.toPx()
-      val dy = depthY.toPx()
-      val cornerR = 10.dp.toPx()
+    // 1. Bottom Base & Plain Side Body (Unified smooth rounded 3D brick body)
+    Box(
+      modifier = Modifier
+        .fillMaxSize()
+        .clip(roundedShape)
+        .background(
+          Brush.linearGradient(
+            colors = listOf(
+              sideWallColor.lighten(0.10f),
+              baseColor,
+              baseColor.darken(0.15f)
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(size.value * 2f, size.value * 2f)
+          )
+        )
+        .border(
+          width = 1.dp,
+          color = baseColor.darken(0.20f),
+          shape = roundedShape
+        )
+    )
 
-      // Base background fill (dark corner back)
-      drawRoundRect(
-        color = baseCornerColor,
-        size = Size(w, h),
-        cornerRadius = CornerRadius(cornerR, cornerR)
-      )
-
-      // Right 3D Side Wall
-      val rightWall = Path().apply {
-        moveTo(w - dx, cornerR)
-        lineTo(w - cornerR / 2f, dy)
-        lineTo(w - cornerR / 2f, h - cornerR)
-        lineTo(w - dx, h - dy)
-        close()
-      }
-      drawPath(rightWall, color = rightWallColor)
-
-      // Bottom 3D Side Wall
-      val bottomWall = Path().apply {
-        moveTo(cornerR, h - dy)
-        lineTo(dx, h - cornerR / 2f)
-        lineTo(w - cornerR, h - cornerR / 2f)
-        lineTo(w - dx, h - dy)
-        close()
-      }
-      drawPath(bottomWall, color = bottomWallColor)
-    }
-
-    // 2. Raised Top Face Plate (Shifted top-left to expose 3D side walls)
+    // 2. Raised Top Face Plate (Same design, clean plain side transition)
     Box(
       modifier = Modifier
         .fillMaxSize()
         .padding(end = depthX, bottom = depthY)
-        .clip(topFaceShape)
+        .clip(roundedShape)
         .background(
           Brush.verticalGradient(
             colors = listOf(
-              mainColor.lighten(0.35f),
+              mainColor.lighten(0.28f),
               mainColor,
-              mainColor.darken(0.18f)
+              mainColor.darken(0.12f)
             )
           )
         )
         .border(
-          width = 1.5.dp,
+          width = 1.2.dp,
           brush = Brush.verticalGradient(
             colors = listOf(
               Color.White.copy(alpha = 0.90f),
               Color.White.copy(alpha = 0.35f),
-              Color.Black.copy(alpha = 0.35f)
+              Color.Black.copy(alpha = 0.25f)
             )
           ),
-          shape = topFaceShape
+          shape = roundedShape
         ),
       contentAlignment = Alignment.Center
     ) {
@@ -138,7 +123,7 @@ fun FruitTile(
           .border(
             width = 1.dp,
             color = Color.White.copy(alpha = 0.25f),
-            shape = RoundedCornerShape(10.dp)
+            shape = RoundedCornerShape(9.dp)
           )
       )
 

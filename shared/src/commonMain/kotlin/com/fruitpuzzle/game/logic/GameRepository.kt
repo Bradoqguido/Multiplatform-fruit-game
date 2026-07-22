@@ -36,7 +36,7 @@ class GameRepository(private val settings: Settings) {
     settings.putInt(KEY_LIVES, current.lives)
   }
 
-  fun startLevel(level: Int) {
+  fun startLevel(level: Int, resetLives: Boolean = true) {
     val board = LevelGenerator.generate(level)
     val clickable = LevelGenerator.calculateClickableTiles(board)
     val dominant = calculateDominantFruit(board)
@@ -44,7 +44,7 @@ class GameRepository(private val settings: Settings) {
     _state.update {
       it.copy(
         currentLevel = level,
-        lives = DEFAULT_LIVES,
+        lives = if (resetLives) DEFAULT_LIVES else it.lives,
         board = board,
         rack = List(GameState.RACK_SIZE) { idx -> RackSlot(index = idx) },
         phase = GamePhase.PLAYING,
@@ -272,7 +272,7 @@ class GameRepository(private val settings: Settings) {
         )
       }
       saveProgress()
-      startLevel(current.currentLevel)
+      startLevel(current.currentLevel, resetLives = false)
     }
   }
 
