@@ -195,7 +195,7 @@ fun PauseMenuModal(
           modifier = Modifier.weight(1f),
           shape = RoundedCornerShape(20.dp)
         ) {
-          Text(text = "🏠 Menu", fontSize = baseFontSize * 0.85f, color = Color.White)
+          Text(text = "🏠 Voltar ao Menu", fontSize = baseFontSize * 0.85f, color = Color.White)
         }
       }
     }

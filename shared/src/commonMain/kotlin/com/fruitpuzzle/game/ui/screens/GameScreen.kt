@@ -257,7 +257,7 @@ private fun GameHeader(
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.15f))
       ) {
-        Text(text = "⏸️", fontSize = 16.sp * fontScale, color = Color.White)
+        Text(text = "⏸️ Pause", fontSize = 16.sp * fontScale, color = Color.White)
       }
 
       Spacer(modifier = Modifier.width(8.dp))
