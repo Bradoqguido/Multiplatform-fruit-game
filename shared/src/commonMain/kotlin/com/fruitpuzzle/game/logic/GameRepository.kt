@@ -21,19 +21,46 @@ class GameRepository(private val settings: Settings) {
   companion object {
     private const val KEY_CURRENT_LEVEL = "currentLevel"
     private const val KEY_LIVES = "livesCounter"
+    private const val KEY_BGM_VOLUME = "bgmVolume"
+    private const val KEY_SFX_VOLUME = "sfxVolume"
+    private const val KEY_IS_MUTED = "isMuted"
+    private const val KEY_UI_SCALE = "uiScale"
+    private const val KEY_FONT_SCALE = "fontScale"
     private const val DEFAULT_LIVES = 3
   }
 
   fun loadSavedProgress() {
     val savedLevel = settings.getInt(KEY_CURRENT_LEVEL, 1)
     val savedLives = settings.getInt(KEY_LIVES, DEFAULT_LIVES)
-    _state.update { it.copy(currentLevel = savedLevel, lives = savedLives) }
+    val savedBgm = settings.getFloat(KEY_BGM_VOLUME, 0.5f)
+    val savedSfx = settings.getFloat(KEY_SFX_VOLUME, 0.8f)
+    val savedMuted = settings.getBoolean(KEY_IS_MUTED, false)
+    val savedUiScale = settings.getFloat(KEY_UI_SCALE, 1.0f)
+    val savedFontScale = settings.getFloat(KEY_FONT_SCALE, 1.0f)
+
+    _state.update {
+      it.copy(
+        currentLevel = savedLevel,
+        lives = savedLives,
+        bgmVolume = savedBgm,
+        sfxVolume = savedSfx,
+        isMuted = savedMuted,
+        uiScale = savedUiScale,
+        fontScale = savedFontScale
+      )
+    }
+    com.fruitpuzzle.game.audio.AudioEngine.updateBgmVolume(savedBgm, savedMuted)
   }
 
   private fun saveProgress() {
     val current = _state.value
     settings.putInt(KEY_CURRENT_LEVEL, current.currentLevel)
     settings.putInt(KEY_LIVES, current.lives)
+    settings.putFloat(KEY_BGM_VOLUME, current.bgmVolume)
+    settings.putFloat(KEY_SFX_VOLUME, current.sfxVolume)
+    settings.putBoolean(KEY_IS_MUTED, current.isMuted)
+    settings.putFloat(KEY_UI_SCALE, current.uiScale)
+    settings.putFloat(KEY_FONT_SCALE, current.fontScale)
   }
 
   fun startLevel(level: Int, resetLives: Boolean = true) {
@@ -227,24 +254,29 @@ class GameRepository(private val settings: Settings) {
 
   fun toggleMute(muted: Boolean) {
     _state.update { it.copy(isMuted = muted) }
+    saveProgress()
     com.fruitpuzzle.game.audio.AudioEngine.updateBgmVolume(_state.value.bgmVolume, muted)
   }
 
   fun setBgmVolume(volume: Float) {
     _state.update { it.copy(bgmVolume = volume) }
+    saveProgress()
     com.fruitpuzzle.game.audio.AudioEngine.updateBgmVolume(volume, _state.value.isMuted)
   }
 
   fun setSfxVolume(volume: Float) {
     _state.update { it.copy(sfxVolume = volume) }
+    saveProgress()
   }
 
   fun setUiScale(scale: Float) {
     _state.update { it.copy(uiScale = scale) }
+    saveProgress()
   }
 
   fun setFontScale(scale: Float) {
     _state.update { it.copy(fontScale = scale) }
+    saveProgress()
   }
 
   private fun calculateDominantFruit(board: List<BoardTile>): FruitType {
