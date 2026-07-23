@@ -147,14 +147,14 @@ class GameRepository(private val settings: Settings) {
     _state.update { curr ->
       val updatedFlying = curr.flyingTiles.filterNot { it.id == flightId }
 
-      // Check for 3-of-a-kind match ONLY after flying tile lands in slot rack
-      val matchIndices = if (updatedFlying.isEmpty()) {
+      // Check for 3-of-a-kind match whenever a tile lands in the slot rack
+      val matchIndices = if (curr.destroyingIndices.isEmpty()) {
         findMatchIndices(curr.rack)
       } else {
         emptyList()
       }
 
-      if (matchIndices.isNotEmpty()) {
+      if (matchIndices.isNotEmpty() && curr.destroyingIndices.isEmpty()) {
         com.fruitpuzzle.game.audio.AudioEngine.playMatchSfx(curr.sfxVolume, curr.isMuted)
       }
 
@@ -193,19 +193,26 @@ class GameRepository(private val settings: Settings) {
         RackSlot(index = remaining.size + idx)
       }
 
+      // Check if there is ANOTHER 3-of-a-kind match in the compacted rack (e.g. after fast tapping)
+      val nextMatchIndices = findMatchIndices(newRack)
+      if (nextMatchIndices.isNotEmpty()) {
+        com.fruitpuzzle.game.audio.AudioEngine.playMatchSfx(current.sfxVolume, current.isMuted)
+      }
+
       val boardEmpty = !current.board.any { it.isVisible }
       val rackEmpty = newRack.all { it.isEmpty }
+      val isFull = newRack.count { !it.isEmpty } >= GameState.RACK_SIZE
 
       val newPhase = when {
-        boardEmpty && rackEmpty && current.flyingTiles.isEmpty() -> GamePhase.WIN
-        newRack.count { !it.isEmpty } >= GameState.RACK_SIZE -> GamePhase.LOSS
+        boardEmpty && rackEmpty && current.flyingTiles.isEmpty() && nextMatchIndices.isEmpty() -> GamePhase.WIN
+        isFull && nextMatchIndices.isEmpty() && current.flyingTiles.isEmpty() -> GamePhase.LOSS
         else -> GamePhase.PLAYING
       }
 
       current.copy(
         rack = newRack,
         phase = newPhase,
-        destroyingIndices = emptyList()
+        destroyingIndices = nextMatchIndices
       )
     }
   }
