@@ -24,6 +24,7 @@ data class GameState(
   val phase: GamePhase = GamePhase.IDLE,
   val flyingTiles: List<FlyingTile> = emptyList(),
   val destroyingIndices: List<Int> = emptyList(),
+  val destroyVersion: Int = 0,
   val clickableTileIds: Set<Int> = emptySet(),
   val dominantFruit: FruitType = FruitType.APPLE,
   val isPaused: Boolean = false,

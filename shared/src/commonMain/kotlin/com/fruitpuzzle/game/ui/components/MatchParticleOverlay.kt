@@ -31,12 +31,13 @@ data class Particle(
 @Composable
 fun MatchParticleOverlay(
   destroyingIndices: List<Int>,
-  slotPositions: Map<Int, Pair<Float, Float>>
+  slotPositions: Map<Int, Pair<Float, Float>>,
+  destroyVersion: Int = 0
 ) {
   if (destroyingIndices.isEmpty()) return
 
-  val progress = remember(destroyingIndices) { Animatable(0f) }
-  val particles = remember(destroyingIndices) {
+  val progress = remember(destroyVersion, destroyingIndices) { Animatable(0f) }
+  val particles = remember(destroyVersion, destroyingIndices) {
     val list = mutableListOf<Particle>()
     val colors = listOf(
       Color(0xFFFFD54F),
@@ -45,7 +46,7 @@ fun MatchParticleOverlay(
       Color(0xFFA5D6A7),
       Color(0xFFFFCC80)
     )
-    val random = Random(destroyingIndices.hashCode())
+    val random = Random(destroyVersion.hashCode() xor destroyingIndices.hashCode())
 
     for (index in destroyingIndices) {
       val pos = slotPositions[index] ?: Pair(0f, 0f)
@@ -63,7 +64,7 @@ fun MatchParticleOverlay(
     list
   }
 
-  LaunchedEffect(destroyingIndices) {
+  LaunchedEffect(destroyVersion, destroyingIndices) {
     progress.animateTo(
       targetValue = 1f,
       animationSpec = tween(durationMillis = 350, easing = LinearEasing)

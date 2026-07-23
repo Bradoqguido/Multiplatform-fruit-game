@@ -159,6 +159,7 @@ class GameRepository(private val settings: Settings) {
       }
 
       val updatedDestroying = (curr.destroyingIndices + matchIndices).distinct()
+      val newVersion = if (matchIndices.isNotEmpty()) curr.destroyVersion + 1 else curr.destroyVersion
 
       val boardEmpty = !curr.board.any { it.isVisible }
       val rackEmpty = curr.rack.all { it.isEmpty }
@@ -175,6 +176,7 @@ class GameRepository(private val settings: Settings) {
       curr.copy(
         flyingTiles = updatedFlying,
         destroyingIndices = updatedDestroying,
+        destroyVersion = newVersion,
         phase = newPhase
       )
     }
@@ -198,6 +200,7 @@ class GameRepository(private val settings: Settings) {
       if (nextMatchIndices.isNotEmpty()) {
         com.fruitpuzzle.game.audio.AudioEngine.playMatchSfx(current.sfxVolume, current.isMuted)
       }
+      val newVersion = if (nextMatchIndices.isNotEmpty()) current.destroyVersion + 1 else current.destroyVersion
 
       val boardEmpty = !current.board.any { it.isVisible }
       val rackEmpty = newRack.all { it.isEmpty }
@@ -212,7 +215,8 @@ class GameRepository(private val settings: Settings) {
       current.copy(
         rack = newRack,
         phase = newPhase,
-        destroyingIndices = nextMatchIndices
+        destroyingIndices = nextMatchIndices,
+        destroyVersion = newVersion
       )
     }
   }

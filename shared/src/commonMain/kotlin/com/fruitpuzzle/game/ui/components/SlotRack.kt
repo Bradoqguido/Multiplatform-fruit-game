@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 fun SlotRack(
   rack: List<RackSlot>,
   destroyingIndices: List<Int>,
+  destroyVersion: Int = 0,
   isDestroyPhase: Boolean,
   onDestroyComplete: () -> Unit,
   onSlotPositioned: (index: Int, x: Float, y: Float) -> Unit,
@@ -50,7 +51,7 @@ fun SlotRack(
 
   // Trigger destroy callback after full 3-piece match group is displayed in the rack
   if (isDestroyPhase) {
-    LaunchedEffect(destroyingIndices) {
+    LaunchedEffect(destroyVersion, destroyingIndices) {
       delay(300) // 300ms delay allows user to visually see the complete 3-piece group formed in slots
       onDestroyComplete()
     }
@@ -114,6 +115,19 @@ private fun SlotContent(
       },
     contentAlignment = Alignment.Center
   ) {
+    // Empty slot placeholder container (always present as background for every slot)
+    Box(
+      modifier = Modifier
+        .size(tileSize)
+        .clip(RoundedCornerShape(10.dp))
+        .border(
+          width = 1.5.dp,
+          color = Color.White.copy(alpha = 0.15f),
+          shape = RoundedCornerShape(10.dp)
+        )
+        .background(Color.White.copy(alpha = 0.05f))
+    )
+
     if (fruitType != null) {
       AnimatedVisibility(
         visible = !isDestroying,
@@ -125,19 +139,6 @@ private fun SlotContent(
           isClickable = false
         )
       }
-    } else {
-      // Empty slot placeholder
-      Box(
-        modifier = Modifier
-          .size(tileSize)
-          .clip(RoundedCornerShape(10.dp))
-          .border(
-            width = 1.5.dp,
-            color = Color.White.copy(alpha = 0.15f),
-            shape = RoundedCornerShape(10.dp)
-          )
-          .background(Color.White.copy(alpha = 0.05f))
-      )
     }
   }
 }

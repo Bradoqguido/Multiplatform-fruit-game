@@ -90,6 +90,7 @@ fun GameScreen(
       SlotRack(
         rack = gameState.rack,
         destroyingIndices = gameState.destroyingIndices,
+        destroyVersion = gameState.destroyVersion,
         isDestroyPhase = gameState.destroyingIndices.isNotEmpty(),
         onDestroyComplete = onDestroyComplete,
         onSlotPositioned = { index, x, y ->
@@ -165,7 +166,8 @@ fun GameScreen(
     // ─── Match Triumph Particle Burst Overlay ───
     MatchParticleOverlay(
       destroyingIndices = gameState.destroyingIndices,
-      slotPositions = slotPositions
+      slotPositions = slotPositions,
+      destroyVersion = gameState.destroyVersion
     )
 
     // ─── Flying Overlay (renders above board) ───
