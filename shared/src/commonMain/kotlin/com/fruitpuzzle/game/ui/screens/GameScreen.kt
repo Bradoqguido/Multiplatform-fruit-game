@@ -119,7 +119,7 @@ fun GameScreen(
           )
         ) {
           Text(
-            text = "🏠 Menu",
+            text = "🏠 Voltar ao Menu",
             fontSize = 14.sp * gameState.fontScale,
             fontWeight = FontWeight.Bold,
             color = Color.White
